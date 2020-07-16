@@ -1,0 +1,128 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+```{r, echo=TRUE}
+
+```
+
+## Loading and preprocessing the data
+###1. Carregamento
+**ler tabela**
+```{r, echo=TRUE}
+atividades <- read.csv("activity.csv")
+```
+**dowload das bibliotecas**
+```{r, echo=TRUE}
+library(ggplot2)
+library(dplyr)
+```
+**Definição do padrão de horario**
+```{r, echo=TRUE}
+Sys.setlocale("LC_TIME", "English")
+```
+###2. Preprocessamento
+**Dados iniciais**
+```{r, echo=TRUE}
+str(atividades)
+```
+**Detalhamento dos dados:**
+"steps": Numero de passos dados durante 5 minutos, inteiro, contem vazios
+"date": Data do registro do evento, fator com 61 niveis
+"interval": Intervalo ocorrido, inteiro
+
+=============================================================================
+## What is mean total number of steps taken per day?
+### 1. Criar variavel
+```{r, echo=TRUE}
+PassosDiarios <- aggregate(atividades$steps, list(atividades$date), sum)
+colnames(PassosDiarios) <- c("Date", "Steps")
+
+```
+### 2. Plotar grafico
+```{r, echo=TRUE}
+hist(PassosDiarios$Steps, main = "Passos por dia", xlab = "Passos totais", ylim = c(0,20), breaks = seq(0,25000, by=2500))
+```
+### 3. Media
+```{r, echo=TRUE}
+mean(PassosDiarios$Steps, na.rm=TRUE)
+```
+### 4.Mediana
+```{r, echo=TRUE}
+median(PassosDiarios$Steps, na.rm=TRUE)
+```
+
+=============================================================================
+## What is the average daily activity pattern?
+### 1. Criar variavel
+```{r, echo=TRUE}
+AtividadeMedia <- aggregate(atividades$steps, by=list(atividades$interval), FUN=mean, na.rm=TRUE)
+names(AtividadeMedia) <- c("interval", "mean")
+```
+### 2. Plotar grafico
+```{r, echo=TRUE}
+plot(AtividadeMedia$interval, AtividadeMedia$mean, main="Media de passos", xlab="Intervalo", ylab="Passos médios", lwd = 2)
+```
+### 3. Dia com numero maximo
+```{r, echo=TRUE}
+AtividadeMedia[which.max(AtividadeMedia$mean), ]$interval
+```
+=============================================================================
+## Imputing missing values
+### 1. Numero total de valores faltantes
+```{r, echo=TRUE}
+sum(is.na(atividades$steps))
+```
+### 2. Substituir os valores pela media de passsos
+```{r, echo=TRUE}
+PassosMedios <- AtividadeMedia$mean[match(atividades$interval, AtividadeMedia$interval)]
+```
+### 3. Criar novo conjunto inserindo os passosmedios no lugar dos *NA*
+```{r, echo=TRUE}
+input <- transform(atividades, steps = ifelse(is.na(atividades$steps), yes = PassosMedios, no = atividades$steps))
+Novo <- aggregate(steps ~ date, input, sum)
+names(Novo) <- c("date", "daily_steps")
+```
+### 4. Fazer histograma
+```{r, echo=TRUE}
+hist(Novo$daily_steps, xlab = "Passos por dia", ylim = c(0,30), breaks = seq(0,25000,by=2500, main = "Passos totais atualizado"))
+```
+### 5. Media
+```{r, echo=TRUE}
+mean(Novo$daily_steps)
+```
+### 6.Mediana
+```{r, echo=TRUE}
+median(Novo$daily_steps)
+```
+=============================================================================
+## Are there differences in activity patterns between weekdays and weekends?
+### 1. Formatar coluna
+```{r, echo=TRUE}
+atividades$date <- as.Date(strptime(atividades$date, format="%Y-%m-%d"))
+```
+### 2. Criar variaveis
+```{r, echo=TRUE}
+atividades$tipo <- sapply(atividades$date, function(x) {
+        if (weekdays(x) == "Saturday" | weekdays(x) =="Sunday") 
+                {y <- "Weekend"} else 
+                {y <- "Weekday"}
+                y
+        })
+```
+### 4. Ver se deu certo
+```{r, echo=TRUE}
+head(atividades, n=10)
+```
+
+### 5. Plotar o grafico
+```{r, echo=TRUE}
+concat <- aggregate(steps~interval + tipo, atividades, mean, na.rm = TRUE)
+plot<- ggplot(concat, aes(x = interval , y = steps, color = tipo)) +
+       geom_line() +
+       labs(title = "media diaria", x = "data", y = "media") +
+       facet_wrap(~tipo, ncol = 1, nrow=2)
+print(plot)
+```
